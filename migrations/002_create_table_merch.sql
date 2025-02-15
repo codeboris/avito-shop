@@ -1,0 +1,5 @@
+CREATE TABLE merch (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price INT NOT NULL
+);
