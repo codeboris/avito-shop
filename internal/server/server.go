@@ -3,20 +3,19 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 type Server struct {
 	httpServer *http.Server
 }
 
-func New(port string, router *mux.Router) *Server {
+func New(port string, router *gin.Engine) *Server {
 	addr := fmt.Sprintf(":%s", port)
 
 	srv := &http.Server{
@@ -37,7 +36,7 @@ func (s *Server) Run() error {
 	go func() {
 		log.Printf("Сервер запущен на %s", s.httpServer.Addr)
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Ошибка запуска сервера: %v", err)
+			log.Printf("Ошибка запуска сервера: %v", err)
 		}
 	}()
 

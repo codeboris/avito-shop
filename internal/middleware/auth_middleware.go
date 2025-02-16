@@ -1,32 +1,44 @@
 package middleware
 
 import (
+	"github.com/codeboris/avito-shop/pkg/jwtutil"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
-
-	"github.com/dgrijalva/jwt-go"
-	"github.com/gorilla/mux"
 )
 
-func AuthMiddleware(jwtSecret string) mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "неавторизован", http.StatusUnauthorized)
-				return
-			}
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Получаем заголовок Authorization
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+			return
+		}
 
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				return []byte(jwtSecret), nil
-			})
-			if err != nil || !token.Valid {
-				http.Error(w, "неавторизован", http.StatusUnauthorized)
-				return
-			}
+		// Проверяем, что токен начинается с "Bearer "
+		const prefix = "Bearer "
+		if !strings.HasPrefix(authHeader, prefix) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token format"})
+			return
+		}
 
-			next.ServeHTTP(w, r)
-		})
+		// Извлекаем сам токен
+		tokenString := strings.TrimPrefix(authHeader, prefix)
+		if tokenString == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "empty token"})
+			return
+		}
+
+		// Валидируем токен
+		userID, err := jwtutil.ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid or expired token"})
+			return
+		}
+
+		// Передаём userID в контекст
+		c.Set("userID", userID)
+		c.Next()
 	}
 }

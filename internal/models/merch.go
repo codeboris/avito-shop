@@ -1,7 +1,7 @@
 package models
 
 type Merch struct {
-	ID    uint
-	Name  string
-	Price int
+	ID    int    `db:"id"`
+	Name  string `db:"name"`
+	Price int    `db:"price"`
 }

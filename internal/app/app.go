@@ -2,53 +2,62 @@ package app
 
 import (
 	"github.com/codeboris/avito-shop/internal/config"
-	"github.com/codeboris/avito-shop/internal/db"
-	"github.com/codeboris/avito-shop/internal/handler"
+	"github.com/codeboris/avito-shop/internal/handlers"
+	"github.com/codeboris/avito-shop/internal/middleware"
 	"github.com/codeboris/avito-shop/internal/repository"
-	"github.com/codeboris/avito-shop/internal/server"
 	"github.com/codeboris/avito-shop/internal/service"
-	"github.com/gorilla/mux"
+	"github.com/codeboris/avito-shop/pkg/jwtutil"
+	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"log"
 )
 
 type App struct {
-	Router *mux.Router
-	Config *config.Config
-	Server *server.Server
-	DB     *sqlx.DB
+	router *gin.Engine
+	config *config.Config
+	db     *sqlx.DB
 }
 
 func New() (*App, error) {
-
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Не удалось загрузить файл конфигурации: %s", err)
 		return nil, err
 	}
 
-	dbConn, err := db.NewPostgresDB(cfg.Database)
+	// Инициализация JWT
+	jwtutil.InitJWT(cfg.JWTSecret)
+
+	db, err := repository.NewPostgresDB(cfg.Database)
 	if err != nil {
-		log.Fatalf("Не удалось подключиться к базе данных: %v", err)
 		return nil, err
 	}
 
-	router := mux.NewRouter()
+	// Инициализация репозиториев
+	userRepo := repository.NewUserRepository(db)
+	merchRepo := repository.NewMerchRepository(db)
+	transactionRepo := repository.NewTransactionRepository(db)
+	purchaseRepo := repository.NewPurchaseRepository(db)
 
-	userRepo := repository.NewUserRepository(dbConn)
+	// Инициализация сервисов
 	userService := service.NewUserService(userRepo)
-	handler.InitAuthHandlers(router, userService, cfg.JWTSecret)
+	merchService := service.NewMerchService(merchRepo, purchaseRepo)
+	transactionService := service.NewTransactionService(transactionRepo, userRepo)
 
-	srv := server.New(cfg.Server.Port, router)
+	// Инициализация middleware
+	authMiddleware := middleware.AuthMiddleware()
+
+	// Инициализация роутера
+	router := gin.Default()
+	handlers.InitRoutes(router, userService, merchService, transactionService, authMiddleware)
 
 	return &App{
-		Router: router,
-		Config: cfg,
-		Server: srv,
-		DB:     dbConn,
+		router: router,
+		config: cfg,
+		db:     db,
 	}, nil
 }
 
 func (a *App) Run() error {
-	return a.Server.Run()
+	log.Printf("Server is running on port %s", a.config.Server.Port)
+	return a.router.Run(":" + a.config.Server.Port)
 }
