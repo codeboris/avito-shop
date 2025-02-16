@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	Database DatabaseConfig
-	Server   ServerConfig
+	Database  DatabaseConfig
+	Server    ServerConfig
+	JWTSecret string
 }
 
 type DatabaseConfig struct {
@@ -37,6 +38,7 @@ func LoadConfig() (*Config, error) {
 		Server: ServerConfig{
 			Port: getEnv("SERVER_PORT", "8080"),
 		},
+		JWTSecret: getEnv("JWT_SECRET", "superSecretKey"),
 	}, nil
 }
 

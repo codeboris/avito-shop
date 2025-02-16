@@ -1,10 +1,12 @@
 package models
 
+import "time"
+
 type User struct {
-	ID                   uint
-	Username             string
-	Coins                int
-	Purchases            []Purchase
-	SentTransactions     []Transaction
-	ReceivedTransactions []Transaction
+	ID        int       `db:"id"`
+	Username  string    `db:"username"`
+	Password  string    `db:"password"`
+	Coins     int       `db:"coins"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }

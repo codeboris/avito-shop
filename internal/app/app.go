@@ -4,7 +4,9 @@ import (
 	"github.com/codeboris/avito-shop/internal/config"
 	"github.com/codeboris/avito-shop/internal/db"
 	"github.com/codeboris/avito-shop/internal/handler"
+	"github.com/codeboris/avito-shop/internal/repository"
 	"github.com/codeboris/avito-shop/internal/server"
+	"github.com/codeboris/avito-shop/internal/service"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	"log"
@@ -21,7 +23,7 @@ func New() (*App, error) {
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("failed to load config file: %s", err)
+		log.Fatalf("Не удалось загрузить файл конфигурации: %s", err)
 		return nil, err
 	}
 
@@ -32,7 +34,10 @@ func New() (*App, error) {
 	}
 
 	router := mux.NewRouter()
-	handler.InitHandlers(router)
+
+	userRepo := repository.NewUserRepository(dbConn)
+	userService := service.NewUserService(userRepo)
+	handler.InitAuthHandlers(router, userService, cfg.JWTSecret)
 
 	srv := server.New(cfg.Server.Port, router)
 
